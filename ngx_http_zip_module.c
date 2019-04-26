@@ -60,6 +60,7 @@ static ngx_int_t ngx_http_zip_main_request_header_filter(ngx_http_request_t *r);
 static ngx_int_t ngx_http_zip_subrequest_header_filter(ngx_http_request_t *r);
 
 static ngx_str_t ngx_http_zip_header_variable_name = ngx_string("upstream_http_x_archive_files");
+static ngx_str_t ngx_http_zip_header_attr_external = ngx_string("upstream_http_x_archive_external_attrs");
 
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
@@ -412,6 +413,38 @@ ngx_http_zip_subrequest_done(ngx_http_request_t *r, void *data, ngx_int_t rc)
 }
 
 static ngx_int_t
+ngx_http_zip_setup_ctx_for_headers(ngx_http_request_t *r, ngx_http_zip_ctx_t *ctx)
+{
+    ngx_http_variable_value_t *vv;
+
+    if ((vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t))) == NULL)
+        return NGX_ERROR;
+
+    ctx->native_charset = 0;
+    ctx->unicode_path = 0;
+    ctx->attr_external = 0;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "mod_zip: parsing request for headers");
+
+    // TODO - Move other header code from ngx_http_zip_file.c to here
+
+    // X-Archive-Charset
+
+    // X-Archive-Name-Sep
+
+    // X-Archive-External-Attrs
+
+    if (ngx_http_variable_unknown_header(vv, &ngx_http_zip_header_attr_external,
+                &r->upstream->headers_in.headers.part, sizeof("upstream_http_") - 1) == NGX_OK && !vv->not_found &&
+            vv->len == sizeof("true") - 1 && ngx_strncmp(vv->data, "true", sizeof("true") - 1) == 0) {
+        ctx->attr_external = 1;
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "mod_zip: External-Attrs: ON");
+    }
+
+    return NGX_OK;
+}
+
+static ngx_int_t
 ngx_http_zip_main_request_body_filter(ngx_http_request_t *r,
         ngx_chain_t *in)
 {
@@ -450,6 +483,11 @@ ngx_http_zip_main_request_body_filter(ngx_http_request_t *r,
                 "mod_zip: not the last buf");
         return ngx_http_zip_discard_chain(r, in);
     } else if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    // Parse the request for our headers and fill out the ctx
+    if (ngx_http_zip_setup_ctx_for_headers(r, ctx) == NGX_ERROR) {
         return NGX_ERROR;
     }
 

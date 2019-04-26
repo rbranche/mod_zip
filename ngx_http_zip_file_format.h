@@ -5,7 +5,8 @@
 /* byte-align structs to conform to ZIP format */
 #pragma pack(push, 1)
 
-#define zip_version_default 10
+#define zip_create_system 3  // Unix
+#define zip_version_default 20
 #define zip_version_zip64 45
 #define zip_utf8_flag 0x0800
 #define zip_missing_crc32_flag 0x08

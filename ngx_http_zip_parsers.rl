@@ -20,6 +20,7 @@ ngx_http_zip_file_init(ngx_http_zip_file_t *parsing_file)
     parsing_file->missing_crc32 = 0;
     parsing_file->need_zip64 = 0;
     parsing_file->need_zip64_offset = 0;
+    parsing_file->attr_external = 0;
 }
 
 static size_t
@@ -127,6 +128,11 @@ ngx_http_zip_parse_request(ngx_http_zip_ctx_t *ctx)
         action end_filename {
             parsing_file->filename.len = fpc - parsing_file->filename.data;
         }
+        action attr_external_incr {
+            if (ctx->attr_external) {
+                parsing_file->attr_external = parsing_file->attr_external * 10 + (fc - '0');
+            }
+        }
 
         file_spec = ( [0-9a-fA-F]+ | "-" ) >start_file $crc_incr
                   " "+
@@ -136,7 +142,8 @@ ngx_http_zip_parse_request(ngx_http_zip_ctx_t *ctx)
                   ( "?" [^ ]+ >start_args %end_args )?
                   " "+
                   [^ ] >start_filename
-                  [^\r\n\0]* %end_filename;
+                  [^\r\n\0 ]* %end_filename
+                  ( " "+ [0-9]+ $attr_external_incr )?;
 
         main := file_spec ([\r\n]+ file_spec)* [\r\n]*;
 

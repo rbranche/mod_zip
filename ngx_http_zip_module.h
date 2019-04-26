@@ -22,6 +22,7 @@ typedef struct {
     uint32_t    filename_utf8_crc32;
     off_t       size; 
     off_t       offset;
+    uint32_t    attr_external;
 
     unsigned    header_sent:1;
     unsigned    trailer_sent:1;
@@ -74,6 +75,7 @@ typedef struct {
     unsigned                zip64_used:1;
     unsigned                unicode_path:1;
     unsigned                native_charset:1;
+    unsigned                attr_external:1;
 } ngx_http_zip_ctx_t;
 
 typedef struct {
